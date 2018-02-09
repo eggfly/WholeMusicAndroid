@@ -1,5 +1,6 @@
 package wholemusic.android;
 
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
@@ -42,13 +43,20 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        QQMusicApi qq = new QQMusicApi();
-        try {
-            List<Music> result = qq.searchMusic("孙燕姿");
-            System.out.println(result);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                QQMusicApi qq = new QQMusicApi();
+                try {
+                    List<Music> result = qq.searchMusic("孙燕姿");
+                    System.out.println(result);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return null;
+            }
+        }.execute();
+
         setContentView(R.layout.activity_main);
         mTextMessage = (TextView) findViewById(R.id.message);
         BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
