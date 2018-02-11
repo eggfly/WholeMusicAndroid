@@ -10,7 +10,8 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
-import wholemusic.core.api.framework.model.Music;
+import wholemusic.core.model.Music;
+
 
 /**
  * Created by haohua on 2018/2/11.

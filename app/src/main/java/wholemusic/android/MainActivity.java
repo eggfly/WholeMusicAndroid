@@ -3,7 +3,6 @@ package wholemusic.android;
 import android.Manifest;
 import android.app.DownloadManager;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
@@ -20,7 +19,6 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.util.List;
 
 import permissions.dispatcher.NeedsPermission;
@@ -29,9 +27,12 @@ import permissions.dispatcher.OnPermissionDenied;
 import permissions.dispatcher.OnShowRationale;
 import permissions.dispatcher.PermissionRequest;
 import permissions.dispatcher.RuntimePermissions;
-import wholemusic.core.api.framework.MusicApi;
-import wholemusic.core.api.framework.model.Music;
-import wholemusic.core.api.impl.qq.QQMusicApi;
+import wholemusic.core.api.MusicApi;
+import wholemusic.core.api.MusicApiFactory;
+import wholemusic.core.api.MusicProvider;
+import wholemusic.core.api.RequestCallback;
+import wholemusic.core.model.Music;
+import wholemusic.core.model.MusicLink;
 
 
 @RuntimePermissions
@@ -42,7 +43,6 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView mMusicListRecyclerView;
     private MusicListAdapter mMusicListAdapter;
     private EditText mSearchEditText;
-    private SearchMusicTask mCurrentSearchTask;
 
     private TextWatcher mTextWatcher = new TextWatcher() {
         @Override
@@ -64,32 +64,52 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onItemClick(View view, int position) {
             final Music music = mMusicListAdapter.getData().get(position);
-            QQMusicApi qq = new QQMusicApi();
-            GetMusicLinkTask task = new GetMusicLinkTask(qq, music.getMusicId(), new Function<String, Void>() {
+            MusicApi qq = MusicApiFactory.create(MusicProvider.QQ音乐);
+            qq.getMusicLinkByIdAsync(music.getMusicId(), new RequestCallback<MusicLink>() {
                 @Override
-                public Void apply(String url) {
-                    DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-                    String filename = music.getName() + ".mp3";
-                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
-                    request.setTitle(filename);
-                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE
-                            | DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                    // TODO: request external storage permission
-                    downloadManager.enqueue(request);
-                    return null;
+                public void onFailure(IOException e) {
+                }
+
+                @Override
+                public void onSuccess(final MusicLink musicLink) {
+                    UIDispatcher.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(musicLink.getUrl()));
+                            String filename = music.getName() + ".mp3";
+                            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
+                            request.setTitle(filename);
+                            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE
+                                    | DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                            downloadManager.enqueue(request);
+                        }
+                    });
                 }
             });
-            task.execute();
         }
     };
 
     private void cancelCurrentAndStartSearchAsync(String query) {
-        if (mCurrentSearchTask != null && mCurrentSearchTask.getStatus() == AsyncTask.Status.RUNNING) {
-            mCurrentSearchTask.cancel(true);
-        }
-        mCurrentSearchTask = new SearchMusicTask(query);
-        mCurrentSearchTask.execute();
+        MusicApi qq = MusicApiFactory.create(MusicProvider.QQ音乐);
+        qq.searchMusicAsync(query, 0, new RequestCallback<List<? extends Music>>() {
+            @Override
+            public void onFailure(IOException e) {
+            }
+
+            @Override
+            public void onSuccess(final List<? extends Music> result) {
+                if (result != null) {
+                    mMusicListRecyclerView.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            mMusicListAdapter.setData(result);
+                            mMusicListAdapter.notifyDataSetChanged();
+                        }
+                    });
+                }
+            }
+        });
     }
 
     @NeedsPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -143,41 +163,8 @@ public class MainActivity extends AppCompatActivity {
         MainActivityPermissionsDispatcher.onRequestPermissionsResult(this, requestCode, grantResults);
     }
 
-    private class SearchMusicTask extends AsyncTask<Void, Void, List<? extends Music>> {
-        private final String mQuery;
-
-        public SearchMusicTask(String query) {
-            mQuery = query;
-        }
-
-        @Override
-        protected List<? extends Music> doInBackground(Void... voids) {
-            QQMusicApi qq = new QQMusicApi();
-            try {
-                List<? extends Music> result = qq.searchMusic(mQuery);
-                System.out.println(result);
-                return result;
-            } catch (InterruptedIOException e) {
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(List<? extends Music> result) {
-            if (!isCancelled()) {
-                if (result != null) {
-                    mMusicListAdapter.setData(result);
-                    mMusicListAdapter.notifyDataSetChanged();
-                }
-            }
-        }
-    }
-
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
-
         @Override
         public boolean onNavigationItemSelected(@NonNull MenuItem item) {
             switch (item.getItemId()) {
@@ -194,31 +181,4 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
     };
-
-    private class GetMusicLinkTask extends AsyncTask<Void, Void, String> {
-        private final MusicApi mMusicApi;
-        private final String mMusicId;
-        private final Function<String, Void> mCallback;
-
-        public GetMusicLinkTask(MusicApi api, String musicId, Function<String, Void> callback) {
-            mMusicApi = api;
-            mMusicId = musicId;
-            mCallback = callback;
-        }
-
-        @Override
-        protected String doInBackground(Void... voids) {
-            try {
-                return mMusicApi.getMusicLinkById(mMusicId).getUrl();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String url) {
-            mCallback.apply(url);
-        }
-    }
 }
