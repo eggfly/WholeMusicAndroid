@@ -1,6 +1,10 @@
 <resources>
-    <string name="app_name">WholeMusicAndroid</string>
+    <string name="app_name">超级曲库</string>
     <string name="title_home">Home</string>
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
+    <string name="netease_cloud_music">网易云音乐</string>
+    <string name="qq_music">QQ音乐</string>
+    <string name="start_online_search">开始全网搜索</string>
+    <string name="search_hint">歌曲名/歌手</string>
 </resources>
