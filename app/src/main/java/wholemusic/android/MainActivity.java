@@ -71,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void cancelCurrentAndStartSearchAsync(String query) {
         if (!TextUtils.isEmpty(query)) {
-            MusicApi api = MusicApiFactory.create(MusicProvider.网易云音乐);
+            MusicApi api = MusicApiFactory.create(MusicProvider.Neteast);
             api.searchMusicAsync(query, 0, new RequestCallback<List<? extends Song>>() {
                 @Override
                 public void onFailure(IOException e) {
