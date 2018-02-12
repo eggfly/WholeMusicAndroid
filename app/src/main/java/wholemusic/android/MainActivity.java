@@ -1,16 +1,15 @@
 package wholemusic.android;
 
 import android.Manifest;
-import android.app.DownloadManager;
-import android.net.Uri;
+import android.content.Intent;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.MenuItem;
@@ -19,6 +18,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import permissions.dispatcher.NeedsPermission;
@@ -31,8 +31,7 @@ import wholemusic.core.api.MusicApi;
 import wholemusic.core.api.MusicApiFactory;
 import wholemusic.core.api.MusicProvider;
 import wholemusic.core.api.RequestCallback;
-import wholemusic.core.model.Music;
-import wholemusic.core.model.MusicLink;
+import wholemusic.core.model.Song;
 
 
 @RuntimePermissions
@@ -63,53 +62,38 @@ public class MainActivity extends AppCompatActivity {
     private MusicListAdapter.OnItemClickListener mOnMusicItemClickListener = new MusicListAdapter.OnItemClickListener() {
         @Override
         public void onItemClick(View view, int position) {
-            final Music music = mMusicListAdapter.getData().get(position);
-            MusicApi qq = MusicApiFactory.create(MusicProvider.QQ音乐);
-            qq.getMusicLinkByIdAsync(music.getMusicId(), new RequestCallback<MusicLink>() {
+            final Song music = mMusicListAdapter.getData().get(position);
+            Intent intent = new Intent(MainActivity.this, SongInfoActivity.class);
+            intent.putExtra(SongInfoActivity.EXTRA_SONG, music);
+            startActivity(intent);
+        }
+    };
+
+    private void cancelCurrentAndStartSearchAsync(String query) {
+        if (!TextUtils.isEmpty(query)) {
+            MusicApi api = MusicApiFactory.create(MusicProvider.网易云音乐);
+            api.searchMusicAsync(query, 0, new RequestCallback<List<? extends Song>>() {
                 @Override
                 public void onFailure(IOException e) {
                 }
 
                 @Override
-                public void onSuccess(final MusicLink musicLink) {
-                    UIDispatcher.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(musicLink.getUrl()));
-                            String filename = music.getName() + ".mp3";
-                            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
-                            request.setTitle(filename);
-                            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE
-                                    | DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                            downloadManager.enqueue(request);
-                        }
-                    });
+                public void onSuccess(final List<? extends Song> result) {
+                    if (result != null) {
+                        mMusicListRecyclerView.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                mMusicListAdapter.setData(result);
+                                mMusicListAdapter.notifyDataSetChanged();
+                            }
+                        });
+                    }
                 }
             });
+        } else {
+            mMusicListAdapter.setData(new ArrayList<Song>());
+            mMusicListAdapter.notifyDataSetChanged();
         }
-    };
-
-    private void cancelCurrentAndStartSearchAsync(String query) {
-        MusicApi qq = MusicApiFactory.create(MusicProvider.QQ音乐);
-        qq.searchMusicAsync(query, 0, new RequestCallback<List<? extends Music>>() {
-            @Override
-            public void onFailure(IOException e) {
-            }
-
-            @Override
-            public void onSuccess(final List<? extends Music> result) {
-                if (result != null) {
-                    mMusicListRecyclerView.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            mMusicListAdapter.setData(result);
-                            mMusicListAdapter.notifyDataSetChanged();
-                        }
-                    });
-                }
-            }
-        });
     }
 
     @NeedsPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)

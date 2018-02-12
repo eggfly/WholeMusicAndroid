@@ -10,7 +10,7 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
-import wholemusic.core.model.Music;
+import wholemusic.core.model.Song;
 
 
 /**
@@ -20,18 +20,18 @@ import wholemusic.core.model.Music;
 public class MusicListAdapter extends RecyclerView.Adapter<MusicViewHolder> implements View.OnClickListener {
 
     private final Context mContext;
-    private List<? extends Music> mData = new ArrayList<>();
+    private List<? extends Song> mData = new ArrayList<>();
     private OnItemClickListener mOnItemClickListener;
 
     public MusicListAdapter(Context context) {
         mContext = context;
     }
 
-    public void setData(List<? extends Music> musics) {
+    public void setData(List<? extends Song> musics) {
         mData = musics;
     }
 
-    public List<? extends Music> getData() {
+    public List<? extends Song> getData() {
         return mData;
     }
 
@@ -46,7 +46,7 @@ public class MusicListAdapter extends RecyclerView.Adapter<MusicViewHolder> impl
     public void onBindViewHolder(MusicViewHolder holder, int position) {
         holder.itemView.setTag(position);
         TextView text = (TextView) holder.itemView.findViewById(android.R.id.text1);
-        final Music item = mData.get(position);
+        final Song item = mData.get(position);
         text.setText(item.getName());
     }
 

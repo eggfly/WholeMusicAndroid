@@ -1,4 +1,4 @@
-package wholemusic.android;
+package wholemusic.android.util;
 
 import android.os.Handler;
 import android.os.Looper;

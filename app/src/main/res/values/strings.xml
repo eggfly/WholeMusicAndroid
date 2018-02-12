@@ -7,4 +7,9 @@
     <string name="qq_music">QQ音乐</string>
     <string name="start_online_search">开始全网搜索</string>
     <string name="search_hint">歌曲名/歌手</string>
+    <string name="download_music">下载这首歌</string>
+    <string name="view_album">查看所在专辑</string>
+    <string name="download_all_album_songs">下载所在专辑所有歌曲</string>
+    <string name="task_added">下载任务已添加!</string>
+    <string name="todo">暂未支持</string>
 </resources>
